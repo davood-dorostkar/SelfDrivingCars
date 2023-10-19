@@ -114,6 +114,9 @@ class Controller2D(object):
             throttle_output = 0.5 * self.vars.v_previous
         """
         self.vars.create_var('v_previous', 0.0)
+        self.vars.create_var('t_previous', 0.0)
+        self.vars.create_var('e_previous', 0.0)
+        self.vars.create_var('e_integral_previous', 0.0)
 
         # Skip the first frame to store previous values properly
         if self._start_control_loop:
@@ -163,7 +166,19 @@ class Controller2D(object):
             # Change these outputs with the longitudinal controller. Note that
             # brake_output is optional and is not required to pass the
             # assignment, as the car will naturally slow down over time.
-            throttle_output = 0
+            dt = t - self.vars.t_previous
+            e = v_desired - v
+            kp = 0.5
+            kd = 0.04
+            ki = 1
+            e_d = (e - self.vars.e_previous) / dt
+            self.vars.e_integral_previous += e * dt
+            e_i = self.vars.e_integral_previous
+            pid = kp * e + kd * e_d + ki * e_i
+            self.vars.t_previous = t
+            self.vars.e_previous = e
+            print(f'v_des: {v_desired}\tv: {v}\te: {e}\te_d: {e_d}\te_i: {e_i}\tdt: {dt}\tpid: {pid}')
+            throttle_output = pid
             brake_output    = 0
 
             ######################################################
