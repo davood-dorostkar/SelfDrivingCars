@@ -68,3 +68,16 @@ in the second shell run this:
 ```
 python manual_control.py 
 ```
+### Run the project code
+run server:
+```
+./CarlaUE4.sh /Game/Maps/RaceTrack -windowed -carla-server -benchmark -fps=20 ​​-ResX=640 -ResY=480​
+```
+run client:
+```
+python module_7.py
+```
+run grader:
+```
+python3 grade_c1m7.py racetrack_waypoints.txt controller_output/trajectory.txt
+```
