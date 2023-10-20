@@ -3,7 +3,6 @@
 """
 2D Controller Class to be used for the CARLA waypoint follower demo.
 """
-
 import cutils
 import numpy as np
 
@@ -117,7 +116,7 @@ class Controller2D(object):
         self.vars.create_var('t_previous', 0.0)
         self.vars.create_var('e_previous', 0.0)
         self.vars.create_var('e_integral_previous', 0.0)
-
+        
         # Skip the first frame to store previous values properly
         if self._start_control_loop:
             """
@@ -151,7 +150,7 @@ class Controller2D(object):
                     steer_output    : Steer output (-1.22 rad to 1.22 rad)
                     brake_output    : Brake output (0 to 1)
             """
-
+            
             ######################################################
             ######################################################
             # MODULE 7: IMPLEMENTATION OF LONGITUDINAL CONTROLLER HERE
@@ -167,20 +166,23 @@ class Controller2D(object):
             # brake_output is optional and is not required to pass the
             # assignment, as the car will naturally slow down over time.
             dt = t - self.vars.t_previous
-            e = v_desired - v
+            
             kp = 0.5
             kd = 0.04
             ki = 1
+
+            e = v_desired - v
             e_d = (e - self.vars.e_previous) / dt
             self.vars.e_integral_previous += e * dt
             e_i = self.vars.e_integral_previous
+
             pid = kp * e + kd * e_d + ki * e_i
-            self.vars.t_previous = t
-            self.vars.e_previous = e
-            print(f'v_des: {v_desired}\tv: {v}\te: {e}\te_d: {e_d}\te_i: {e_i}\tdt: {dt}\tpid: {pid}')
             throttle_output = pid
             brake_output    = 0
 
+            self.vars.t_previous = t
+            self.vars.e_previous = e
+            self.vars.v_previous = v 
             ######################################################
             ######################################################
             # MODULE 7: IMPLEMENTATION OF LATERAL CONTROLLER HERE
@@ -191,9 +193,46 @@ class Controller2D(object):
                 access the persistent variables declared above here. For
                 example, can treat self.vars.v_previous like a "global variable".
             """
+
+            def createLinearDesiredPath(waypoints,diff):
+                x1 = waypoints[0][0]
+                y1 = waypoints[0][1]
+                x2 = waypoints[diff][0]
+                y2 = waypoints[diff][1]
+                slope = (y2-y1)/(x2-x1)
+                a= -slope
+                b= 1.0
+                c = x1*slope - y1
+                path_yaw = np.math.atan2(y2-y1, x2-x1)
+                return a, b, c, path_yaw
             
-            # Change the steer output with the lateral controller. 
-            steer_output    = 0
+            def calc_cross_track(x, y, a, b, c):
+                num = a*x + b*y + c
+                den = np.math.sqrt(a**2 + b**2)
+                return num/den
+            
+            # heading correction
+            a, b, c, path_yaw = createLinearDesiredPath(waypoints, 5) # make a line between current waypoint and 5 waypoints farther
+            e_psi = path_yaw - yaw
+            psi_term = e_psi
+
+            # crosstrak correction
+            k = 0.5
+            k_s = 0.1   
+            e_crosstrack = calc_cross_track(x, y, a, b, c)
+            yaw_cross_track = np.arctan2(y-waypoints[0][1], x-waypoints[0][0])
+            yaw_path2ct = path_yaw - yaw_cross_track
+            if yaw_path2ct > np.pi:
+                yaw_path2ct -= 2 * np.pi
+            if yaw_path2ct < - np.pi:
+                yaw_path2ct += 2 * np.pi
+            if yaw_path2ct > 0:
+                e_crosstrack = abs(e_crosstrack)
+            else:
+                e_crosstrack = - abs(e_crosstrack)
+
+            ct_term = np.arctan(k * e_crosstrack / (v + k_s))
+            steer_output = psi_term + ct_term 
 
             ######################################################
             # SET CONTROLS OUTPUT
@@ -201,15 +240,3 @@ class Controller2D(object):
             self.set_throttle(throttle_output)  # in percent (0 to 1)
             self.set_steer(steer_output)        # in rad (-1.22 to 1.22)
             self.set_brake(brake_output)        # in percent (0 to 1)
-
-        ######################################################
-        ######################################################
-        # MODULE 7: STORE OLD VALUES HERE (ADD MORE IF NECESSARY)
-        ######################################################
-        ######################################################
-        """
-            Use this block to store old values (for example, we can store the
-            current x, y, and yaw values here using persistent variables for use
-            in the next iteration)
-        """
-        self.vars.v_previous = v  # Store forward speed to be used in next step
