@@ -19,16 +19,17 @@ STOP_THRESHOLD = 0.02
 # Number of cycles before moving from stop sign.
 STOP_COUNTS = 10
 
+
 class BehaviouralPlanner:
     def __init__(self, lookahead, stopsign_fences, lead_vehicle_lookahead):
-        self._lookahead                     = lookahead
-        self._stopsign_fences               = stopsign_fences
+        self._lookahead = lookahead
+        self._stopsign_fences = stopsign_fences
         self._follow_lead_vehicle_lookahead = lead_vehicle_lookahead
-        self._state                         = FOLLOW_LANE
-        self._follow_lead_vehicle           = False
-        self._goal_state                    = [0.0, 0.0, 0.0]
-        self._goal_index                    = 0
-        self._stop_count                    = 0
+        self._state = FOLLOW_LANE
+        self._follow_lead_vehicle = False
+        self._goal_state = [0.0, 0.0, 0.0]
+        self._goal_index = 0
+        self._stop_count = 0
 
     def set_lookahead(self, lookahead):
         self._lookahead = lookahead
@@ -43,10 +44,10 @@ class BehaviouralPlanner:
     ######################################################
     # Handles state transitions and computes the goal state.
     def transition_state(self, waypoints, ego_state, closed_loop_speed):
-        """Handles state transitions and computes the goal state.  
-        
+        """Handles state transitions and computes the goal state.
+
         args:
-            waypoints: current waypoints to track (global frame). 
+            waypoints: current waypoints to track (global frame).
                 length and speed in m and m/s.
                 (includes speed to track at each x,y location.)
                 format: [[x0, y0, v0],
@@ -54,7 +55,7 @@ class BehaviouralPlanner:
                          ...
                          [xn, yn, vn]]
                 example:
-                    waypoints[2][1]: 
+                    waypoints[2][1]:
                     returns the 3rd waypoint's y position
 
                     waypoints[5]:
@@ -71,7 +72,7 @@ class BehaviouralPlanner:
             self._goal_state: Goal state for the vehicle to reach (global frame)
                 format: [x_goal, y_goal, v_goal]
             self._state: The current state of the vehicle.
-                available states: 
+                available states:
                     FOLLOW_LANE         : Follow the global waypoints (lane).
                     DECELERATE_TO_STOP  : Decelerate to stop.
                     STAY_STOPPED        : Stay stopped.
@@ -80,7 +81,7 @@ class BehaviouralPlanner:
         useful_constants:
             STOP_THRESHOLD  : Stop speed threshold (m). The vehicle should fully
                               stop when its speed falls within this threshold.
-            STOP_COUNTS     : Number of cycles (simulation iterations) 
+            STOP_COUNTS     : Number of cycles (simulation iterations)
                               before moving from stop sign.
         """
         # In this state, continue tracking the lane by finding the
@@ -97,31 +98,36 @@ class BehaviouralPlanner:
             # First, find the closest index to the ego vehicle.
             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
-            # closest_len, closest_index = ...
+            closest_len, closest_index = get_closest_index(waypoints, ego_state)
             # ------------------------------------------------------------------
 
             # Next, find the goal index that lies within the lookahead distance
             # along the waypoints.
             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
-            # goal_index = ...
+            goal_index = self.get_goal_index(
+                waypoints, ego_state, closest_len, closest_index
+            )
             # ------------------------------------------------------------------
 
             # Finally, check the index set between closest_index and goal_index
             # for stop signs, and compute the goal state accordingly.
             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
-            # goal_index, stop_sign_found = ...
-            # self._goal_index = ...
-            # self._goal_state = ...
+            goal_index, stop_sign_found = self.check_for_stop_signs(
+                waypoints, closest_index, goal_index
+            )
+            self._goal_index = goal_index
+            self._goal_state = waypoints[goal_index]
             # ------------------------------------------------------------------
 
-            # If stop sign found, set the goal to zero speed, then transition to 
+            # If stop sign found, set the goal to zero speed, then transition to
             # the deceleration state.
             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
-            # if stop_sign_found:
-            #   ...
+            if stop_sign_found:
+                self._goal_state[2] = 0
+                self._state = DECELERATE_TO_STOP
             # ------------------------------------------------------------------
 
             pass
@@ -133,7 +139,8 @@ class BehaviouralPlanner:
         elif self._state == DECELERATE_TO_STOP:
             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
             # ------------------------------------------------------------------
-            # ...
+            if closed_loop_speed <= STOP_THRESHOLD:
+                self._state = STAY_STOPPED
             # ------------------------------------------------------------------
 
             pass
@@ -145,31 +152,35 @@ class BehaviouralPlanner:
             # We have stayed stopped for the required number of cycles.
             # Allow the ego vehicle to leave the stop sign. Once it has
             # passed the stop sign, return to lane following.
-            # You should use the get_closest_index(), get_goal_index(), and 
+            # You should use the get_closest_index(), get_goal_index(), and
             # check_for_stop_signs() helper functions.
             if self._stop_count == STOP_COUNTS:
                 # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
-                # closest_len, closest_index = ...
-                # goal_index = ...
+                closest_len, closest_index = get_closest_index(waypoints, ego_state)
+                goal_index = self.get_goal_index(
+                    waypoints, ego_state, closest_len, closest_index
+                )
                 # --------------------------------------------------------------
 
-                # We've stopped for the required amount of time, so the new goal 
+                # We've stopped for the required amount of time, so the new goal
                 # index for the stop line is not relevant. Use the goal index
                 # that is the lookahead distance away.
                 # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
-                # stop_sign_found = ...
-                # self._goal_index = ... 
-                # self._goal_state = ... 
+                stop_sign_found = self.check_for_stop_signs(
+                    waypoints, closest_index, goal_index
+                )
+                self._goal_index = goal_index
+                self._goal_state = waypoints[goal_index]
                 # --------------------------------------------------------------
 
                 # If the stop sign is no longer along our path, we can now
                 # transition back to our lane following state.
                 # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
-                # if not stop_sign_found:
-                #   ...
+                if not stop_sign_found:
+                    self._state = FOLLOW_LANE
                 # --------------------------------------------------------------
 
                 pass
@@ -178,12 +189,12 @@ class BehaviouralPlanner:
             else:
                 # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
-                # ...
+                self._stop_count += 1
                 # --------------------------------------------------------------
 
                 pass
         else:
-            raise ValueError('Invalid state value.')
+            raise ValueError("Invalid state value.")
 
     ######################################################
     ######################################################
@@ -197,8 +208,8 @@ class BehaviouralPlanner:
     # the current ego state. In particular, find the earliest waypoint that has accumulated
     # arc length (including closest_len) that is greater than or equal to self._lookahead.
     def get_goal_index(self, waypoints, ego_state, closest_len, closest_index):
-        """Gets the goal index for the vehicle. 
-        
+        """Gets the goal index for the vehicle.
+
         Set to be the earliest waypoint that has accumulated arc length
         accumulated arc length (including closest_len) that is greater than or
         equal to self._lookahead.
@@ -212,7 +223,7 @@ class BehaviouralPlanner:
                          ...
                          [xn, yn, vn]]
                 example:
-                    waypoints[2][1]: 
+                    waypoints[2][1]:
                     returns the 3rd waypoint's y position
 
                     waypoints[5]:
@@ -235,7 +246,7 @@ class BehaviouralPlanner:
         # consideration.
         arc_length = closest_len
         wp_index = closest_index
-        
+
         # In this case, reaching the closest waypoint is already far enough for
         # the planner.  No need to check additional waypoints.
         if arc_length > self._lookahead:
@@ -248,8 +259,15 @@ class BehaviouralPlanner:
         # Otherwise, find our next waypoint.
         # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
         # ------------------------------------------------------------------
-        # while wp_index < len(waypoints) - 1:
-        #   arc_length += ...
+        while wp_index < len(waypoints) - 1:
+            x_this = waypoints[wp_index][0]
+            y_this = waypoints[wp_index][1]
+            x_next = waypoints[wp_index + 1][0]
+            y_next = waypoints[wp_index + 1][1]
+            arc_length += np.sqrt((x_this - x_next) ** 2 + (y_this - y_next) ** 2)
+            if arc_length >= self._lookahead:
+                wp_index += 1
+                break
         # ------------------------------------------------------------------
 
         return wp_index
@@ -263,7 +281,7 @@ class BehaviouralPlanner:
         Checks for a stop sign that is intervening the goal path. Returns a new
         goal index (the current goal index is obstructed by a stop line), and a
         boolean flag indicating if a stop sign obstruction was found.
-        
+
         args:
             waypoints: current waypoints to track. (global frame)
                 length and speed in m and m/s.
@@ -273,7 +291,7 @@ class BehaviouralPlanner:
                          ...
                          [xn, yn, vn]]
                 example:
-                    waypoints[2][1]: 
+                    waypoints[2][1]:
                     returns the 3rd waypoint's y position
 
                     waypoints[5]:
@@ -283,7 +301,7 @@ class BehaviouralPlanner:
                 goal_index (current): Current goal index for the vehicle to reach
                     i.e. waypoints[goal_index] gives the goal waypoint
         variables to set:
-            [goal_index (updated), stop_sign_found]: 
+            [goal_index (updated), stop_sign_found]:
                 goal_index (updated): Updated goal index for the vehicle to reach
                     i.e. waypoints[goal_index] gives the goal waypoint
                 stop_sign_found: Boolean flag for whether a stop sign was found or not
@@ -292,21 +310,21 @@ class BehaviouralPlanner:
             # Check to see if path segment crosses any of the stop lines.
             intersect_flag = False
             for stopsign_fence in self._stopsign_fences:
-                wp_1   = np.array(waypoints[i][0:2])
-                wp_2   = np.array(waypoints[i+1][0:2])
-                s_1    = np.array(stopsign_fence[0:2])
-                s_2    = np.array(stopsign_fence[2:4])
+                wp_1 = np.array(waypoints[i][0:2])
+                wp_2 = np.array(waypoints[i + 1][0:2])
+                s_1 = np.array(stopsign_fence[0:2])
+                s_2 = np.array(stopsign_fence[2:4])
 
-                v1     = np.subtract(wp_2, wp_1)
-                v2     = np.subtract(s_1, wp_2)
+                v1 = np.subtract(wp_2, wp_1)
+                v2 = np.subtract(s_1, wp_2)
                 sign_1 = np.sign(np.cross(v1, v2))
-                v2     = np.subtract(s_2, wp_2)
+                v2 = np.subtract(s_2, wp_2)
                 sign_2 = np.sign(np.cross(v1, v2))
 
-                v1     = np.subtract(s_2, s_1)
-                v2     = np.subtract(wp_1, s_2)
+                v1 = np.subtract(s_2, s_1)
+                v2 = np.subtract(wp_1, s_2)
                 sign_3 = np.sign(np.cross(v1, v2))
-                v2     = np.subtract(wp_2, s_2)
+                v2 = np.subtract(wp_2, s_2)
                 sign_4 = np.sign(np.cross(v1, v2))
 
                 # Check if the line segments intersect.
@@ -330,7 +348,7 @@ class BehaviouralPlanner:
                     return goal_index, True
 
         return goal_index, False
-                
+
     # Checks to see if we need to modify our velocity profile to accomodate the
     # lead vehicle.
     def check_for_lead_vehicle(self, ego_state, lead_car_position):
@@ -355,28 +373,29 @@ class BehaviouralPlanner:
         if not self._follow_lead_vehicle:
             # Compute the angle between the normalized vector between the lead vehicle
             # and ego vehicle position with the ego vehicle's heading vector.
-            lead_car_delta_vector = [lead_car_position[0] - ego_state[0], 
-                                     lead_car_position[1] - ego_state[1]]
+            lead_car_delta_vector = [
+                lead_car_position[0] - ego_state[0],
+                lead_car_position[1] - ego_state[1],
+            ]
             lead_car_distance = np.linalg.norm(lead_car_delta_vector)
-            # In this case, the car is too far away.   
+            # In this case, the car is too far away.
             if lead_car_distance > self._follow_lead_vehicle_lookahead:
                 return
 
-            lead_car_delta_vector = np.divide(lead_car_delta_vector, 
-                                              lead_car_distance)
-            ego_heading_vector = [math.cos(ego_state[2]), 
-                                  math.sin(ego_state[2])]
+            lead_car_delta_vector = np.divide(lead_car_delta_vector, lead_car_distance)
+            ego_heading_vector = [math.cos(ego_state[2]), math.sin(ego_state[2])]
             # Check to see if the relative angle between the lead vehicle and the ego
             # vehicle lies within +/- 45 degrees of the ego vehicle's heading.
-            if np.dot(lead_car_delta_vector, 
-                      ego_heading_vector) < (1 / math.sqrt(2)):
+            if np.dot(lead_car_delta_vector, ego_heading_vector) < (1 / math.sqrt(2)):
                 return
 
             self._follow_lead_vehicle = True
 
         else:
-            lead_car_delta_vector = [lead_car_position[0] - ego_state[0], 
-                                     lead_car_position[1] - ego_state[1]]
+            lead_car_delta_vector = [
+                lead_car_position[0] - ego_state[0],
+                lead_car_position[1] - ego_state[1],
+            ]
             lead_car_distance = np.linalg.norm(lead_car_delta_vector)
 
             # Add a 15m buffer to prevent oscillations for the distance check.
@@ -414,7 +433,7 @@ def get_closest_index(waypoints, ego_state):
                      ...
                      [xn, yn, vn]]
             example:
-                waypoints[2][1]: 
+                waypoints[2][1]:
                 returns the 3rd waypoint's y position
 
                 waypoints[5]:
@@ -431,20 +450,32 @@ def get_closest_index(waypoints, ego_state):
             closest_index: index of the waypoint which is closest to the vehicle.
                 i.e. waypoints[closest_index] gives the waypoint closest to the vehicle.
     """
-    closest_len = float('Inf')
+    closest_len = float("Inf")
     closest_index = 0
     # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
     # ------------------------------------------------------------------
-    # for i in range(len(waypoints)):
-    #   ...
+    for i in range(len(waypoints)):
+        x_w = waypoints[i][0]
+        y_w = waypoints[i][1]
+        x = ego_state[0]
+        y = ego_state[1]
+        dist = np.sqrt((x - x_w) ** 2 + (y - y_w) ** 2)
+        if dist < closest_len:
+            closest_len = dist
+            closest_index = i
     # ------------------------------------------------------------------
 
     return closest_len, closest_index
 
-# Checks if p2 lies on segment p1-p3, if p1, p2, p3 are collinear.        
+
+# Checks if p2 lies on segment p1-p3, if p1, p2, p3 are collinear.
 def pointOnSegment(p1, p2, p3):
-    if (p2[0] <= max(p1[0], p3[0]) and (p2[0] >= min(p1[0], p3[0])) and \
-       (p2[1] <= max(p1[1], p3[1])) and (p2[1] >= min(p1[1], p3[1]))):
+    if (
+        p2[0] <= max(p1[0], p3[0])
+        and (p2[0] >= min(p1[0], p3[0]))
+        and (p2[1] <= max(p1[1], p3[1]))
+        and (p2[1] >= min(p1[1], p3[1]))
+    ):
         return True
     else:
         return False
