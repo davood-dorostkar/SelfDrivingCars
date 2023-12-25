@@ -31,12 +31,8 @@ class LocalPlanner:
         self._num_paths = num_paths
         self._path_offset = path_offset
         self._path_optimizer = path_optimizer.PathOptimizer()
-        self._collision_checker = collision_checker.CollisionChecker(
-            circle_offsets, circle_radii, path_select_weight
-        )
-        self._velocity_planner = velocity_planner.VelocityPlanner(
-            time_gap, a_max, slow_speed, stop_line_buffer
-        )
+        self._collision_checker = collision_checker.CollisionChecker(circle_offsets, circle_radii, path_select_weight)
+        self._velocity_planner = velocity_planner.VelocityPlanner(time_gap, a_max, slow_speed, stop_line_buffer)
 
     ######################################################
     ######################################################
@@ -96,12 +92,12 @@ class LocalPlanner:
         # consecutive waypoints, then use the np.arctan2() function.
         # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
         # ------------------------------------------------------------------
-        if goal_index == (len(waypoints) - 1):
-            goal_index = waypoints[-2]
-        # else: ...
-        # ...
-        delta_x = waypoints[goal_index + 1][0] - waypoints[goal_index][0]
-        delta_y = waypoints[goal_index + 1][1] - waypoints[goal_index][1]
+        if goal_index < len(waypoints) - 1:
+            delta_x = waypoints[goal_index + 1][0] - waypoints[goal_index][0]
+            delta_y = waypoints[goal_index + 1][1] - waypoints[goal_index][1]
+        else:
+            delta_x = waypoints[goal_index][0] - waypoints[goal_index - 1][0]
+            delta_y = waypoints[goal_index][1] - waypoints[goal_index - 1][1]
         heading = np.arctan2(delta_y, delta_x)
         # ------------------------------------------------------------------
 
@@ -127,15 +123,15 @@ class LocalPlanner:
         # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
         # ------------------------------------------------------------------
         theta = -ego_state[2]
-        goal_x = goal_state_local[0] * cos(theta) + goal_state_local[1] * sin(theta)
-        goal_y = -goal_state_local[0] * sin(theta) + goal_state_local[1] * cos(theta)
+        goal_x = goal_state_local[0] * cos(theta) - goal_state_local[1] * sin(theta)
+        goal_y = goal_state_local[0] * sin(theta) + goal_state_local[1] * cos(theta)
         # ------------------------------------------------------------------
 
         # Compute the goal yaw in the local frame by subtracting off the
         # current ego yaw from the heading variable.
         # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
         # ------------------------------------------------------------------
-        goal_t = goal_state_local[2] - ego_state[2]
+        goal_t = heading - ego_state[2]
         # ------------------------------------------------------------------
 
         # Velocity is preserved after the transformation.
@@ -166,9 +162,7 @@ class LocalPlanner:
             y_offset = offset * sin(goal_t + pi / 2)
             # ------------------------------------------------------------------
 
-            goal_state_set.append(
-                [goal_x + x_offset, goal_y + y_offset, goal_t, goal_v]
-            )
+            goal_state_set.append([goal_x + x_offset, goal_y + y_offset, goal_t, goal_v])
 
         return goal_state_set
 
@@ -211,9 +205,7 @@ class LocalPlanner:
         paths = []
         path_validity = []
         for goal_state in goal_state_set:
-            path = self._path_optimizer.optimize_spiral(
-                goal_state[0], goal_state[1], goal_state[2]
-            )
+            path = self._path_optimizer.optimize_spiral(goal_state[0], goal_state[1], goal_state[2])
             if (
                 np.linalg.norm(
                     [
@@ -270,16 +262,8 @@ def transform_paths(paths, ego_state):
         t_transformed = []
 
         for i in range(len(path[0])):
-            x_transformed.append(
-                ego_state[0]
-                + path[0][i] * cos(ego_state[2])
-                - path[1][i] * sin(ego_state[2])
-            )
-            y_transformed.append(
-                ego_state[1]
-                + path[0][i] * sin(ego_state[2])
-                + path[1][i] * cos(ego_state[2])
-            )
+            x_transformed.append(ego_state[0] + path[0][i] * cos(ego_state[2]) - path[1][i] * sin(ego_state[2]))
+            y_transformed.append(ego_state[1] + path[0][i] * sin(ego_state[2]) + path[1][i] * cos(ego_state[2]))
             t_transformed.append(path[2][i] + ego_state[2])
 
         transformed_paths.append([x_transformed, y_transformed, t_transformed])

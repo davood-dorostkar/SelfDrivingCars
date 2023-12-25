@@ -541,7 +541,7 @@ def calc_final_speed(v_i, a, d):
     if discriminent < 0:
         v_f = 0
     else:
-        v_f = sqrt()
+        v_f = sqrt(discriminent)
 
     return v_f
     # ------------------------------------------------------------------

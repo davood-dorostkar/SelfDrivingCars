@@ -162,7 +162,11 @@ class CollisionChecker:
                 # A lower score implies a more suitable path.
                 # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
-                dist = scipy.spatial.distance.cdist(paths[i][:, 0:2], goal_state[:, 0:2])
+                # dist = scipy.spatial.distance.cdist(paths[i][:, 0:2], goal_state[:, 0:2])
+                # path_array = np.array(paths[i])
+                # dist = scipy.spatial.distance.cdist(path_array[:, :2], np.array([goal_state[:2]]))
+                # dist = scipy.spatial.distance.cdist(paths[i][:, :2], [goal_state[:2]])
+                dist = np.sqrt((paths[i][0][-1] - goal_state[0]) ** 2 + (paths[i][1][-1] - goal_state[1]) ** 2)
                 score = dist
                 # --------------------------------------------------------------
 
@@ -176,10 +180,13 @@ class CollisionChecker:
                         if not collision_check_array[j]:
                             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                             # --------------------------------------------------
-                            score += self._weight * scipy.spatial.distance.cdist(paths[i][:, 0:2], paths[j][:, 0:2])
+                            # score += self._weight * scipy.spatial.distance.cdist(paths[i][:, :2], paths[j][:, :2])
+                            score += self._weight / sqrt(
+                                (paths[i][0][-1] - paths[j][1][-1]) ** 2 + (paths[i][1][-1] - paths[j][1][-1]) ** 2
+                            )
                             # --------------------------------------------------
 
-                            # pass
+                            pass
 
             # Handle the case of colliding paths.
             else:
