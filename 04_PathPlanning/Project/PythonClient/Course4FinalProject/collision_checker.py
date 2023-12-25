@@ -11,11 +11,12 @@ import numpy as np
 import scipy.spatial
 from math import sin, cos, pi, sqrt
 
+
 class CollisionChecker:
     def __init__(self, circle_offsets, circle_radii, weight):
         self._circle_offsets = circle_offsets
-        self._circle_radii   = circle_radii
-        self._weight         = weight
+        self._circle_radii = circle_radii
+        self._weight = weight
 
     ######################################################
     ######################################################
@@ -31,7 +32,7 @@ class CollisionChecker:
         """Returns a bool array on whether each path is collision free.
 
         args:
-            paths: A list of paths in the global frame.  
+            paths: A list of paths in the global frame.
                 A path is a list of points of the following format:
                     [x_points, y_points, t_points]:
                         x_points: List of x values (m)
@@ -56,7 +57,7 @@ class CollisionChecker:
         collision_check_array = np.zeros(len(paths), dtype=bool)
         for i in range(len(paths)):
             collision_free = True
-            path           = paths[i]
+            path = paths[i]
 
             # Iterate over the points in the path.
             for j in range(len(path[0])):
@@ -77,13 +78,14 @@ class CollisionChecker:
                 # circle_y = point_y circle_offset*sin(yaw)
                 # for each point along the path.
                 # point_x is given by path[0][j], and point _y is given by
-                # path[1][j]. 
+                # path[1][j].
                 circle_locations = np.zeros((len(self._circle_offsets), 2))
 
                 # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
-                # circle_locations[:, 0] = ... 
-                # circle_locations[:, 1] = ...
+                circle_offset = np.array(self._circle_offsets)
+                circle_locations[:, 0] = path[0][j] + circle_offset * cos(path[2][j])
+                circle_locations[:, 1] = path[1][j] + circle_offset * sin(path[2][j])
                 # --------------------------------------------------------------
 
                 # Assumes each obstacle is approximated by a collection of
@@ -93,13 +95,9 @@ class CollisionChecker:
                 # If so, then the path will collide with an obstacle and
                 # the collision_free flag should be set to false for this flag
                 for k in range(len(obstacles)):
-                    collision_dists = \
-                        scipy.spatial.distance.cdist(obstacles[k], 
-                                                     circle_locations)
-                    collision_dists = np.subtract(collision_dists, 
-                                                  self._circle_radii)
-                    collision_free = collision_free and \
-                                     not np.any(collision_dists < 0)
+                    collision_dists = scipy.spatial.distance.cdist(obstacles[k], circle_locations)
+                    collision_dists = np.subtract(collision_dists, self._circle_radii)
+                    collision_free = collision_free and not np.any(collision_dists < 0)
 
                     if not collision_free:
                         break
@@ -120,7 +118,7 @@ class CollisionChecker:
     ######################################################
     # Selects the best path in the path set, according to how closely
     # it follows the lane centerline, and how far away it is from other
-    # paths that are in collision. 
+    # paths that are in collision.
     # Disqualifies paths that collide with obstacles from the selection
     # process.
     # collision_check_array contains True at index i if paths[i] is
@@ -133,7 +131,7 @@ class CollisionChecker:
         away from collision paths.
 
         args:
-            paths: A list of paths in the global frame.  
+            paths: A list of paths in the global frame.
                 A path is a list of points of the following format:
                     [x_points, y_points, t_points]:
                         x_points: List of x values (m)
@@ -154,7 +152,7 @@ class CollisionChecker:
                 navigate with.
         """
         best_index = None
-        best_score = float('Inf')
+        best_score = float("Inf")
         for i in range(len(paths)):
             # Handle the case of collision-free paths.
             if collision_check_array[i]:
@@ -164,7 +162,8 @@ class CollisionChecker:
                 # A lower score implies a more suitable path.
                 # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                 # --------------------------------------------------------------
-                # score = ...
+                dist = scipy.spatial.distance.cdist(paths[i][:, 0:2], goal_state[:, 0:2])
+                score = dist
                 # --------------------------------------------------------------
 
                 # Compute the "proximity to other colliding paths" score and
@@ -177,15 +176,15 @@ class CollisionChecker:
                         if not collision_check_array[j]:
                             # TODO: INSERT YOUR CODE BETWEEN THE DASHED LINES
                             # --------------------------------------------------
-                            # score += self._weight * ...
+                            score += self._weight * scipy.spatial.distance.cdist(paths[i][:, 0:2], paths[j][:, 0:2])
                             # --------------------------------------------------
 
-                            pass
+                            # pass
 
             # Handle the case of colliding paths.
             else:
-                score = float('Inf')
-                
+                score = float("Inf")
+
             # Set the best index to be the path index with the lowest score
             if score < best_score:
                 best_score = score
