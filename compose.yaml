@@ -2,6 +2,7 @@ version: "3.8"
 
 services:
   carla_client_0_8:
+    image: carla_client:0.8.4
     build:
       context: .
       dockerfile: Dockerfile
