@@ -1,0 +1,29 @@
+version: "3.8"
+
+services:
+  carla_client_0_8:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: carla_client_0_8
+    tty: true
+    stdin_open: true
+    privileged: true
+    network_mode: host
+    volumes:
+      - /opt/carla/v0.8.4/:/opt/carla/v0.8.4/
+      - ./Projects:/home/Projects
+      - ./01_Introduction:/home/01_Introduction
+      - ./02_Estimation:/home/02_Estimation
+      - ./04_PathPlanning:/home/04_PathPlanning
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    environment:
+      - DISPLAY=$DISPLAY
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities:
+                - gpu
